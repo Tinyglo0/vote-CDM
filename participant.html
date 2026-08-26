@@ -19,7 +19,7 @@
       </div>
       <div id="status" class="mt-4 fs-4 fw-bold text-info">Connexion au serveur...</div>
       
-      <!-- <a href="index.html" class="text-muted d-block mt-5">Retour à l'accueil</a> -->
+      <a href="index.html" class="text-muted d-block mt-5">Retour à l'accueil</a>
     </div>
   </div>
 
@@ -56,9 +56,7 @@
         const conn = peer.connect(id);
         
         window.addEventListener('beforeunload', () => {
-          if (conn && conn.open) {
-            conn.close();
-          }
+          if (conn && conn.open) conn.close();
         });
 
         conn.on('open', () => {
