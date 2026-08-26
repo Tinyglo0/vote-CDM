@@ -38,13 +38,7 @@
     function initParticipant(id) {
       document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = true);
 
-      peer = new Peer({
-        config: {
-          'iceServers': [
-            { urls: 'stun:stun.l.google.com:19302' }
-          ]
-        }
-      });
+      peer = new Peer(); 
       
       peer.on('error', (err) => {
         if (err.type === 'peer-unavailable') {
