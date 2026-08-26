@@ -93,7 +93,7 @@
           document.getElementById('display-code').innerText = id;
           document.getElementById('modal-code').innerText = id;
           
-          const baseUrl = window.location.href.split('?')[0].replace('animateur.html', 'participant.html');
+          const baseUrl = window.location.href.split('?')[0].replace(/animateur(\.html)?/i, 'participant.html');
           const urlVote = baseUrl + '?room=' + id;
           
           new QRCode(document.getElementById("qrcode"), { text: urlVote, width: 150, height: 150 });
