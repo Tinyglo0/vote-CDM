@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote en direct - Animation</title>
+  <!-- Bibliothèques pour le réseau pair-à-pair et le QR code -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Bootswatch Brite Theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/brite/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container text-center">
+    <!-- VUE ANIMATEUR -->
+    <div id="vue-animateur">
+      <h1 class="mb-4 mt-4">Résultats du vote</h1>
+      
+      <div class="mb-4 fs-4 text-muted">
+         Participants connectés : <span id="total-participants" class="fw-bold text-primary">0</span><br>
+         Votes exprimés : <span id="total-votes" class="fw-bold text-primary">0</span>
+      </div>
+
+      <div id="waiting-message" class="alert alert-warning mb-4 mx-auto" style="max-width: 500px;">
+        <span class="fs-4 fw-bold">En attente de tous les votes (<span id="waiting-votes">0</span> / <span id="waiting-participants">0</span>)</span>
+        <br>
+        <button class="btn btn-sm btn-outline-dark mt-3" onclick="forceReveal()">Forcer l'affichage</button>
+      </div>
+
+      <!-- The cards, hidden by default until reveal -->
+      <div id="results-cards" class="row mb-4" style="display:none; justify-content: center;">
+        <div class="col-md-4 mb-3">
+          <div class="card text-white bg-success h-100">
+            <div class="card-header h3">Oui</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <h2 class="card-title display-1 mb-0" id="c-oui">0</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card text-white bg-danger h-100">
+            <div class="card-header h3">Non</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <h2 class="card-title display-1 mb-0" id="c-non">0</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card text-dark bg-light h-100 border">
+            <div class="card-header h3">Abstention</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+              <h2 class="card-title display-1 mb-0" id="c-abs">0</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-light btn-lg mt-2" onclick="reset()">Nouvelle question</button>
+      
+      <a href="index.html" class="text-muted d-block mt-5">Retour à l'accueil</a>
+
+      <!-- Modal QR Code -->
+      <dialog id="qrModal" class="border-0 rounded p-5 shadow-lg text-center">
+        <h2 class="mb-3">Rejoindre la session</h2>
+        <h1 class="display-1 text-primary fw-bold mb-4" id="modal-code">...</h1>
+        <div id="qrcode-modal" class="d-flex justify-content-center mb-5"></div>
+        <button class="btn btn-secondary btn-lg w-100 rounded-pill" onclick="document.getElementById('qrModal').close()">Fermer</button>
+      </dialog>
+
+      <!-- SIDE PANEL -->
+      <div id="side-panel" class="">
+        <button id="btn-toggle-panel" onclick="toggleQRPanel()" title="Réduire/Agrandir le panneau">
+          <span class="chevron">◀</span>
+        </button>
+        <div class="panel-content text-center">
+          <h4 class="mb-4 text-dark mt-3">Connexion</h4>
+          <p class="text-muted fs-6 mb-1">Code de la session :</p>
+          <h2 class="text-primary fw-bold mb-4" id="display-code">...</h2>
+          <p class="text-muted fs-6 mb-2">Scannez pour rejoindre :</p>
+          <div id="qrcode" class="mt-2 mx-auto" style="cursor: pointer; width: 150px;" onclick="document.getElementById('qrModal').showModal()" title="Cliquez pour agrandir"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let peer; 
+    let votes = { oui: 0, non: 0, abs: 0 };
+    let connections = [];
+    let voteSessionId = Date.now(); 
+    let isRevealed = false;
+
+    window.onload = () => {
+      // Générer un code alphanumérique à 6 caractères
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      peer = new Peer(code);
+
+      peer.on('open', (id) => {
+        document.getElementById('display-code').innerText = id;
+        document.getElementById('modal-code').innerText = id;
+        
+        // L'URL pointe maintenant vers participant.html
+        const baseUrl = window.location.href.split('?')[0].replace('animateur.html', 'participant.html');
+        const urlVote = baseUrl + '?room=' + id;
+        
+        new QRCode(document.getElementById("qrcode"), {
+          text: urlVote,
+          width: 150,
+          height: 150
+        });
+
+        new QRCode(document.getElementById("qrcode-modal"), {
+          text: urlVote,
+          width: 350,
+          height: 350
+        });
+
+        peer.on('connection', (conn) => {
+          connections.push(conn);
+          
+          conn.on('open', () => {
+            // Envoyer la session pour forcer l'ouverture du canal
+            conn.send('session:' + voteSessionId);
+            updateProfUI();
+          });
+          
+          conn.on('close', () => {
+            connections = connections.filter(c => c !== conn);
+            updateProfUI();
+          });
+          
+          conn.on('data', (data) => {
+            if (data === 'request_session') {
+              conn.send('session:' + voteSessionId);
+            } else if(votes[data] !== undefined) {
+              votes[data]++;
+              document.getElementById('c-' + data).innerText = votes[data];
+              updateProfUI();
+            }
+          });
+        });
+      });
+    };
+
+    function updateProfUI() {
+      let nbParticipants = connections.length;
+      let nbVotes = votes.oui + votes.non + votes.abs;
+      
+      document.getElementById('total-participants').innerText = nbParticipants;
+      document.getElementById('total-votes').innerText = nbVotes;
+      document.getElementById('waiting-participants').innerText = nbParticipants;
+      document.getElementById('waiting-votes').innerText = nbVotes;
+
+      if (isRevealed || (nbParticipants > 0 && nbVotes >= nbParticipants)) {
+        document.getElementById('waiting-message').style.display = 'none';
+        document.getElementById('results-cards').style.display = 'flex';
+        isRevealed = true;
+      } else {
+        document.getElementById('waiting-message').style.display = 'block';
+        document.getElementById('results-cards').style.display = 'none';
+        isRevealed = false;
+      }
+    }
+
+    window.forceReveal = () => {
+      isRevealed = true;
+      updateProfUI();
+    };
+
+    window.toggleQRPanel = () => {
+      const panel = document.getElementById('side-panel');
+      if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+      } else {
+        panel.classList.add('collapsed');
+      }
+    };
+
+    window.reset = () => {
+      votes = { oui: 0, non: 0, abs: 0 };
+      document.getElementById('c-oui').innerText = '0';
+      document.getElementById('c-non').innerText = '0';
+      document.getElementById('c-abs').innerText = '0';
+      voteSessionId = Date.now();
+      isRevealed = false;
+      
+      connections = connections.filter(conn => conn.open);
+      connections.forEach(conn => {
+        if(conn.open) conn.send('session:' + voteSessionId);
+      });
+      updateProfUI();
+    };
+  </script>
+</body>
+</html>

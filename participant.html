@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote en direct - Participation</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/brite/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container text-center">
+    <div id="vue-participant" style="max-width: 500px; margin: 0 auto; margin-top: 15vh;">
+      <h1 class="mb-4">Votez</h1>
+      <div class="d-grid gap-3">
+        <button class="btn btn-success btn-lg py-3 fs-3 rounded-pill" onclick="voter('oui')">Oui</button>
+        <button class="btn btn-danger btn-lg py-3 fs-3 rounded-pill" onclick="voter('non')">Non</button>
+        <button class="btn btn-secondary btn-lg py-3 fs-3 rounded-pill" onclick="voter('abs')">Abstention</button>
+      </div>
+      <div id="status" class="mt-4 fs-4 fw-bold text-info">Connexion au serveur...</div>
+      
+      <!-- <a href="index.html" class="text-muted d-block mt-5">Retour à l'accueil</a> -->
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomID = urlParams.get('room');
+    let peer; 
+    let currentSessionId = null;
+
+    if (!roomID) {
+      window.location.href = 'index.html';
+    } else {
+      initParticipant(roomID.toUpperCase());
+    }
+
+    function initParticipant(id) {
+      document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = true);
+
+      peer = new Peer(); 
+      
+      peer.on('error', (err) => {
+        if (err.type === 'peer-unavailable') {
+          document.getElementById('status').innerText = 'Session introuvable. Vérifiez le code.';
+          document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-danger';
+        } else {
+          document.getElementById('status').innerText = 'Erreur : ' + err.type;
+          document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-danger';
+        }
+      });
+
+      peer.on('open', () => {
+        document.getElementById('status').innerText = 'Recherche de la session...';
+        
+        const conn = peer.connect(id);
+        
+        window.addEventListener('beforeunload', () => {
+          if (conn && conn.open) {
+            conn.close();
+          }
+        });
+
+        conn.on('open', () => {
+          document.getElementById('status').innerText = 'Synchronisation...';
+          conn.send('request_session');
+          
+          window.voter = (choix) => {
+            conn.send(choix);
+            if (currentSessionId) {
+              sessionStorage.setItem('voted_' + id + '_' + currentSessionId, 'true');
+            }
+            document.getElementById('status').innerText = 'A voté : ' + choix.toUpperCase();
+            document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-success';
+            document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = true);
+          };
+          
+          conn.on('data', (data) => {
+            if (typeof data === 'string' && data.startsWith('session:')) {
+              currentSessionId = data.split(':')[1];
+              if (sessionStorage.getItem('voted_' + id + '_' + currentSessionId)) {
+                document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = true);
+                document.getElementById('status').innerText = 'Vous avez déjà voté pour cette question.';
+                document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-warning';
+              } else {
+                document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = false);
+                document.getElementById('status').innerText = 'Prêt à voter !';
+                document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-primary';
+              }
+            } else if (data === 'reset') {
+              document.querySelectorAll('#vue-participant button').forEach(btn => btn.disabled = false);
+              document.getElementById('status').innerText = 'Nouvelle question !';
+              document.getElementById('status').className = 'mt-4 fs-4 fw-bold text-primary';
+            }
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>

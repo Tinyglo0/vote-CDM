@@ -1,0 +1,76 @@
+body { 
+  padding-top: 2rem; 
+  padding-bottom: 6rem; 
+}
+#qrcode { 
+  display: flex; 
+  justify-content: center; 
+}
+
+
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+/* Side panel (clean style, no neobrutalism) */
+#side-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+}
+
+#side-panel.collapsed {
+  transform: translateX(-100%);
+}
+
+#btn-toggle-panel {
+  position: absolute;
+  top: 50%;
+  right: -24px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 50px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+#btn-toggle-panel:hover {
+  background: #f9fafb;
+  color: #2563eb;
+}
+
+.panel-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+#btn-toggle-panel .chevron {
+  transition: transform 0.3s ease;
+  font-size: 12px;
+}
+
+#side-panel.collapsed .chevron {
+  transform: rotate(180deg);
+}

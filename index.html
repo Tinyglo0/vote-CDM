@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote en direct - Accueil</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/brite/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container text-center">
+    <div style="max-width: 500px; margin: 0 auto; margin-top: 15vh;">
+      <h1 class="mb-5 display-4 fw-bold">Vote en direct</h1>
+      
+      <!-- Bouton Créer -->
+      <a href="animateur.html" class="btn btn-primary btn-lg w-100 mb-5 py-3 fs-4 rounded-pill">Créer une session</a>
+      
+      <!-- Encart Rejoindre -->
+      <div class="card bg-light border-0 shadow-sm mt-3">
+        <div class="card-body p-4">
+          <h3 class="mb-4">Rejoindre une session</h3>
+          <input type="text" id="input-code" class="form-control form-control-lg text-center mb-4 fw-bold fs-3 text-uppercase" placeholder="Code (ex: A1B2C3)" maxlength="6" onkeypress="if(event.key === 'Enter') rejoindreSession()">
+          <button class="btn btn-success btn-lg w-100 py-3 fs-4 rounded-pill" onclick="rejoindreSession()">Rejoindre</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.rejoindreSession = () => {
+      const code = document.getElementById('input-code').value.trim().toUpperCase();
+      if (code) {
+        window.location.href = 'participant.html?room=' + code;
+      }
+    };
+  </script>
+</body>
+</html>
